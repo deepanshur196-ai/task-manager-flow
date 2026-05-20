@@ -60,9 +60,7 @@ export const chatAPI = {
 // Files APIs
 export const filesAPI = {
   getFiles: (params) => api.get('/files', { params }),
-  uploadFile: (formData) => api.post('/files/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  uploadFile: (formData) => api.post('/files/upload', formData),
   deleteFile: (fileId) => api.delete(`/files/${fileId}`),
   shareFile: (fileId, data) => api.post(`/files/${fileId}/share`, data),
   getFileActivity: (projectId) => api.get(`/files/activity/${projectId}`),

@@ -23,10 +23,13 @@ export default function Calendar() {
   const { addNotification } = useNotifications();
   const notifiedMeetingIds = useRef(new Set());
 
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const isToday = (eventDate) => format(new Date(eventDate), 'yyyy-MM-dd') === today;
+
   const notifyTodayMeetings = (eventsList) => {
-    const today = format(new Date(), 'yyyy-MM-dd');
     (eventsList || []).forEach((event) => {
-      if (event.type === 'meeting' && event.date === today) {
+      if (event.type === 'meeting' && isToday(event.date)) {
         const eventId = event.id || event._id || `${event.title}-${event.date}`;
         if (!notifiedMeetingIds.current.has(eventId)) {
           addNotification({
@@ -37,6 +40,22 @@ export default function Calendar() {
         }
       }
     });
+  };
+
+  const notifyEventCreated = (event) => {
+    if (event.type === 'meeting') {
+      addNotification({
+        message: isToday(event.date)
+          ? `Meeting today: ${event.title}`
+          : `Meeting scheduled for ${format(new Date(event.date), 'MMM d')}: ${event.title}`,
+        type: 'info',
+      });
+    } else {
+      addNotification({
+        message: `${event.type.charAt(0).toUpperCase() + event.type.slice(1)} created: ${event.title}`,
+        type: 'success',
+      });
+    }
   };
 
   useEffect(() => {
@@ -73,6 +92,7 @@ export default function Calendar() {
       const { data } = await calendarAPI.createEvent(newEvent);
       setEvents((prev) => [...prev, data]);
       notifyTodayMeetings([data]);
+      notifyEventCreated(data);
       setTitle('');
       setDescription('');
       setType('deadline');
@@ -89,7 +109,7 @@ export default function Calendar() {
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const getEventsForDate = (date) => {
-    return events.filter(event => event.date === format(date, 'yyyy-MM-dd'));
+    return events.filter((event) => format(new Date(event.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
   };
 
   const previousMonth = () => {
