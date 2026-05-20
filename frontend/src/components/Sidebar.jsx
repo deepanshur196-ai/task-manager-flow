@@ -6,11 +6,16 @@ const Sidebar = () => {
   const isProjectLead = user?.designation === 'Project Lead';
 
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/projects', label: 'Projects' },
-    ...(isProjectLead ? [{ to: '/team', label: 'My Team' }] : []),
-    { to: '/tasks', label: 'Tasks' },
-    { to: '/profile', label: 'Profile' },
+    { to: '/dashboard', label: '📊 Dashboard' },
+    { to: '/projects', label: '📁 Projects' },
+    ...(isProjectLead ? [{ to: '/team', label: '👥 My Team' }] : []),
+    { to: '/tasks', label: '✅ Tasks' },
+    { to: '/analytics', label: '📈 Analytics' },
+    { to: '/calendar', label: '📅 Calendar' },
+    { to: '/ai-assistant', label: '🤖 AI Assistant' },
+    { to: '/chat', label: '💬 Chat' },
+    { to: '/files', label: '📂 Files & Docs' },
+    { to: '/profile', label: '⚙️ Settings' },
   ];
 
   return (

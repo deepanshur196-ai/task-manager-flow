@@ -12,6 +12,11 @@ import Projects from './pages/Projects';
 import Signup from './pages/Signup';
 import Tasks from './pages/Tasks';
 import Team from './pages/Team';
+import Analytics from './pages/Analytics';
+import Calendar from './pages/Calendar';
+import AiAssistant from './pages/AiAssistant';
+import Chat from './pages/Chat';
+import Files from './pages/Files';
 
 function Unauthorized() {
   return <div className="p-8 text-red-600">Unauthorized</div>;
@@ -44,6 +49,31 @@ function App() {
             <Route path="/tasks" element={
               <ProtectedRoute>
                 <Tasks />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/calendar" element={
+              <ProtectedRoute>
+                <Calendar />
+              </ProtectedRoute>
+            } />
+            <Route path="/ai-assistant" element={
+              <ProtectedRoute>
+                <AiAssistant />
+              </ProtectedRoute>
+            } />
+            <Route path="/chat" element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            } />
+            <Route path="/files" element={
+              <ProtectedRoute>
+                <Files />
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
