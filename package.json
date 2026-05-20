@@ -12,7 +12,6 @@
     "build:frontend": "npm run build --prefix frontend",
     "build": "npm run install:backend && npm run install:frontend && npm run build:frontend",
     "postinstall": "npm run install:backend",
-    "prestart": "npm run install:backend",
-    "start": "node backend/src/server.js"
+    "start": "npm run install:backend && node backend/src/server.js"
   }
 }
