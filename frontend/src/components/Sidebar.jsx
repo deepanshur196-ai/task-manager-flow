@@ -12,8 +12,6 @@ const Sidebar = () => {
     { to: '/tasks', label: '✅ Tasks' },
     { to: '/analytics', label: '📈 Analytics' },
     { to: '/calendar', label: '📅 Calendar' },
-    { to: '/ai-assistant', label: '🤖 AI Assistant' },
-    { to: '/chat', label: '💬 Chat' },
     { to: '/files', label: '📂 Files & Docs' },
     { to: '/profile', label: '⚙️ Settings' },
   ];

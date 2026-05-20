@@ -1,15 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { useNotifications } from '../context/NotificationContext';
+import { calendarAPI } from '../services/api';
+
+const eventColorMap = {
+  deadline: 'red',
+  meeting: 'blue',
+  sprint: 'green',
+  leave: 'purple',
+  other: 'gray',
+};
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState([
-    { id: 1, date: '2026-05-25', title: 'Project Deadline', type: 'deadline', color: 'red' },
-    { id: 2, date: '2026-05-26', title: 'Team Meeting', type: 'meeting', color: 'blue' },
-    { id: 3, date: '2026-05-27', title: 'Sprint Review', type: 'sprint', color: 'green' },
-    { id: 4, date: '2026-05-28', title: 'Leave Day', type: 'leave', color: 'purple' },
-  ]);
+  const [events, setEvents] = useState([]);
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [type, setType] = useState('deadline');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { addNotification } = useNotifications();
+  const notifiedMeetingIds = useRef(new Set());
+
+  const notifyTodayMeetings = (eventsList) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    (eventsList || []).forEach((event) => {
+      if (event.type === 'meeting' && event.date === today) {
+        const eventId = event.id || event._id || `${event.title}-${event.date}`;
+        if (!notifiedMeetingIds.current.has(eventId)) {
+          addNotification({
+            message: `You have a meeting today: ${event.title}`,
+            type: 'info',
+          });
+          notifiedMeetingIds.current.add(eventId);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const { data } = await calendarAPI.getEvents();
+      const eventsData = data || [];
+      setEvents(eventsData);
+      notifyTodayMeetings(eventsData);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddEvent = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !date) return;
+
+    const newEvent = {
+      title: title.trim(),
+      date,
+      type,
+      description: description.trim(),
+      color: eventColorMap[type] || eventColorMap.other,
+    };
+
+    try {
+      const { data } = await calendarAPI.createEvent(newEvent);
+      setEvents((prev) => [...prev, data]);
+      notifyTodayMeetings([data]);
+      setTitle('');
+      setDescription('');
+      setType('deadline');
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+    } catch (error) {
+      console.error('Error creating event:', error);
+    }
+  };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -108,25 +179,81 @@ export default function Calendar() {
           {/* Upcoming Events Sidebar */}
           <div className="bg-white rounded-lg shadow-md p-6 h-fit">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">📌 Upcoming Events</h3>
-            <div className="space-y-3">
-              {events.map(event => (
-                <div key={event.id} className="border-l-4 pl-3 py-2" style={{
-                  borderColor: event.color === 'red' ? '#ef4444' :
-                    event.color === 'blue' ? '#3b82f6' :
-                    event.color === 'green' ? '#10b981' : '#a855f7'
-                }}>
-                  <div className="text-sm font-semibold text-gray-800">{event.title}</div>
-                  <div className="text-xs text-gray-500">{event.date}</div>
-                  <span className={`inline-block text-xs px-2 py-1 rounded mt-1 text-white ${
-                    event.color === 'red' ? 'bg-red-500' :
-                    event.color === 'blue' ? 'bg-blue-500' :
-                    event.color === 'green' ? 'bg-green-500' : 'bg-purple-500'
-                  }`}>
-                    {event.type}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <form onSubmit={handleAddEvent} className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Event title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  placeholder="Design review"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Event type</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                >
+                  <option value="deadline">Deadline</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="sprint">Sprint</option>
+                  <option value="leave">Leave</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  rows={3}
+                  placeholder="Add a note or meeting agenda"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              >
+                Add Event
+              </button>
+            </form>
+            {loading ? (
+              <div className="text-sm text-gray-500">Loading events...</div>
+            ) : (
+              <div className="space-y-3">
+                {events.map(event => (
+                  <div key={event.id} className="border-l-4 pl-3 py-2" style={{
+                    borderColor: event.color === 'red' ? '#ef4444' :
+                      event.color === 'blue' ? '#3b82f6' :
+                      event.color === 'green' ? '#10b981' : '#a855f7'
+                  }}>
+                    <div className="text-sm font-semibold text-gray-800">{event.title}</div>
+                    <div className="text-xs text-gray-500">{event.date}</div>
+                    <div className="text-xs text-gray-500">{event.description}</div>
+                    <span className={`inline-block text-xs px-2 py-1 rounded mt-1 text-white ${
+                      event.color === 'red' ? 'bg-red-500' :
+                      event.color === 'blue' ? 'bg-blue-500' :
+                      event.color === 'green' ? 'bg-green-500' : 'bg-purple-500'
+                    }`}>
+                      {event.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,15 +1,16 @@
-const express = require('express');
-const router = express.Router();
-const { auth } = require('../middleware/auth');
-const {
+import express from 'express';
+import auth from '../middleware/auth.js';
+import {
   getAnalytics,
   getTeamAnalytics,
-} = require('../controllers/analyticsController');
+} from '../controllers/analyticsController.js';
+
+const router = express.Router();
 
 // Get user analytics
-router.get('/', auth, getAnalytics);
+router.get('/', auth(), getAnalytics);
 
 // Get team analytics for a project
-router.get('/team/:projectId', auth, getTeamAnalytics);
+router.get('/team/:projectId', auth(), getTeamAnalytics);
 
-module.exports = router;
+export default router;

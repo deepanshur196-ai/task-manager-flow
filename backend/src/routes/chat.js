@@ -1,27 +1,28 @@
-const express = require('express');
-const router = express.Router();
-const { auth } = require('../middleware/auth');
-const {
+import express from 'express';
+import auth from '../middleware/auth.js';
+import {
   getChannels,
   getMessages,
   sendMessage,
   createChannel,
   joinChannel,
-} = require('../controllers/chatController');
+} from '../controllers/chatController.js';
+
+const router = express.Router();
 
 // Get all channels
-router.get('/channels', auth, getChannels);
+router.get('/channels', auth(), getChannels);
 
 // Get messages for a channel
-router.get('/channels/:channelId/messages', auth, getMessages);
+router.get('/channels/:channelId/messages', auth(), getMessages);
 
 // Send message to a channel
-router.post('/channels/:channelId/messages', auth, sendMessage);
+router.post('/channels/:channelId/messages', auth(), sendMessage);
 
 // Create new channel
-router.post('/channels', auth, createChannel);
+router.post('/channels', auth(), createChannel);
 
 // Join a channel
-router.post('/channels/:channelId/join', auth, joinChannel);
+router.post('/channels/:channelId/join', auth(), joinChannel);
 
-module.exports = router;
+export default router;

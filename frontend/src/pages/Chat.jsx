@@ -2,68 +2,157 @@ import { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
+import { chatAPI, filesAPI } from '../services/api';
+
+const defaultChannels = [
+  { id: 'general', name: 'General', emoji: '💬', members: 12 },
+  { id: 'project-alpha', name: 'Project Alpha', emoji: '🚀', members: 8 },
+  { id: 'tech-discuss', name: 'Tech Discussion', emoji: '🔧', members: 15 },
+  { id: 'announcements', name: 'Announcements', emoji: '📢', members: 30 },
+];
 
 export default function Chat() {
   const { user } = useAuth();
   const [selectedChannel, setSelectedChannel] = useState('general');
-  const [messages, setMessages] = useState([
-    { id: 1, user: 'John Doe', avatar: '👨', content: 'Hey team! How\'s the project coming along?', timestamp: '10:30 AM', channel: 'general' },
-    { id: 2, user: 'Jane Smith', avatar: '👩', content: 'Great! Almost finished with the analytics module.', timestamp: '10:32 AM', channel: 'general' },
-    { id: 3, user: 'Mike Johnson', avatar: '👨‍💼', content: '@John We need to discuss the timeline for next sprint.', timestamp: '10:35 AM', channel: 'general' },
-  ]);
+  const [channels, setChannels] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const channels = [
-    { id: 'general', name: 'General', emoji: '💬', members: 12 },
-    { id: 'project-alpha', name: 'Project Alpha', emoji: '🚀', members: 8 },
-    { id: 'tech-discuss', name: 'Tech Discussion', emoji: '🔧', members: 15 },
-    { id: 'announcements', name: 'Announcements', emoji: '📢', members: 30 },
-  ];
+  const effectiveChannels = channels.length ? channels : defaultChannels;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
+    loadChannels();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedChannel) return;
+    joinChannel(selectedChannel);
+    loadMessages(selectedChannel);
+  }, [selectedChannel]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    // Socket.io listeners
     const socket = getSocket();
     socket.on('message', (data) => {
-      setMessages(prev => [...prev, data]);
+      if (data.channel === selectedChannel) {
+        setMessages((prev) => [...prev, data]);
+      }
     });
 
     return () => {
       socket.off('message');
     };
-  }, []);
+  }, [selectedChannel]);
+
+  const loadChannels = async () => {
+    try {
+      const { data } = await chatAPI.getChannels();
+      setChannels(data);
+      if (!selectedChannel && data.length) {
+        setSelectedChannel(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading chat channels:', error);
+    }
+  };
+
+  const loadMessages = async (channelId) => {
+    try {
+      const { data } = await chatAPI.getMessages(channelId);
+      setMessages(data.map((message) => ({
+        id: message.id,
+        user: message.username || message.user,
+        avatar: message.avatar || '👤',
+        content: message.content,
+        timestamp: message.timestamp ? new Date(message.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+        channel: message.channelId || message.channel || channelId,
+        attachment: message.attachment,
+      })));
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  const joinChannel = (channelId) => {
+    const socket = getSocket();
+    socket.emit('joinChannel', channelId);
+  };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const newMessage = {
-      id: messages.length + 1,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       user: user?.name || 'Anonymous',
       avatar: '👤',
-      content: input,
+      content: input.trim(),
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       channel: selectedChannel,
     };
 
-    setMessages([...messages, newMessage]);
-    
-    // Emit through Socket.io (TODO: implement backend)
-    const socket = getSocket();
-    socket.emit('sendMessage', newMessage);
-    
+    setMessages((prev) => [...prev, newMessage]);
+    getSocket().emit('sendMessage', newMessage);
     setInput('');
   };
 
-  const channelMessages = messages.filter(msg => msg.channel === selectedChannel);
+  const canUpload = user && (user.role === 'Admin' || ['Project Lead', 'Project QL'].includes(user.designation));
+
+  const handleAttachmentClick = () => {
+    if (!canUpload) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event) => {
+    if (!canUpload) {
+      console.warn('Upload denied: insufficient permissions');
+      event.target.value = '';
+      return;
+    }
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await filesAPI.uploadFile(formData);
+
+      const attachmentMessage = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        user: user?.name || 'Anonymous',
+        avatar: '👤',
+        content: `Sent a file: ${file.name}`,
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        channel: selectedChannel,
+        attachment: {
+          name: file.name,
+          url: data.path,
+        },
+      };
+
+      setMessages((prev) => [...prev, attachmentMessage]);
+      getSocket().emit('sendMessage', attachmentMessage);
+    } catch (error) {
+      console.error('File upload failed:', error);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const channelMessages = messages.filter((msg) => msg.channel === selectedChannel);
 
   return (
     <DashboardLayout>
@@ -83,7 +172,7 @@ export default function Chat() {
             </div>
 
             <div className="overflow-y-auto flex-1">
-              {channels.map(channel => (
+              {effectiveChannels.map(channel => (
                 <button
                   key={channel.id}
                   onClick={() => setSelectedChannel(channel.id)}
@@ -117,10 +206,10 @@ export default function Chat() {
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">
-                  {channels.find(c => c.id === selectedChannel)?.emoji} {channels.find(c => c.id === selectedChannel)?.name}
+                  {effectiveChannels.find(c => c.id === selectedChannel)?.emoji} {effectiveChannels.find(c => c.id === selectedChannel)?.name}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  {channels.find(c => c.id === selectedChannel)?.members} members
+                  {effectiveChannels.find(c => c.id === selectedChannel)?.members} members
                 </p>
               </div>
               <div className="flex gap-2">
@@ -146,6 +235,18 @@ export default function Chat() {
                       <span className="text-xs text-gray-500">{message.timestamp}</span>
                     </div>
                     <p className="text-gray-700 mt-1 break-words">{message.content}</p>
+                    {message.attachment && (
+                      <div className="mt-2">
+                        <a
+                          href={message.attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          {message.attachment.name}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -154,7 +255,7 @@ export default function Chat() {
 
             {/* Message Input */}
             <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <input
                   type="text"
                   value={input}
@@ -169,10 +270,22 @@ export default function Chat() {
                   Send
                 </button>
               </div>
-              <div className="mt-3 flex gap-2 text-gray-600 text-sm">
-                <button type="button" className="hover:text-gray-800">📎 Attach</button>
-                <button type="button" className="hover:text-gray-800">🎤 Voice</button>
-                <button type="button" className="hover:text-gray-800">😊 Emoji</button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <div className="mt-3 flex gap-2 text-gray-600 text-sm items-center">
+                <button
+                  type="button"
+                  onClick={handleAttachmentClick}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  disabled={!canUpload || uploading}
+                >
+                  📎 Attach
+                </button>
+                <span>{uploading ? 'Uploading file...' : canUpload ? 'Attach a file to share in chat' : 'Upload restricted to Admin, Project Lead, or Project QL.'}</span>
               </div>
             </form>
           </div>

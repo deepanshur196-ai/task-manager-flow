@@ -14,9 +14,10 @@ const auth = (roles = []) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
       if (roles.length) {
-        const isAdminRole = roles.includes('Admin');
-        const canUseAdmin = isAdminRole && decoded.designation === 'Project Lead';
-        if (!roles.includes(decoded.role) && !canUseAdmin) {
+        const hasRoleMatch = roles.includes(decoded.role);
+        const hasDesignationMatch = roles.includes(decoded.designation);
+        const hasProjectLeadAdminMatch = roles.includes('Admin') && decoded.designation === 'Project Lead';
+        if (!hasRoleMatch && !hasDesignationMatch && !hasProjectLeadAdminMatch) {
           return res.status(403).json({ message: 'Forbidden: insufficient role' });
         }
       }

@@ -52,20 +52,32 @@ const getMessages = async (req, res) => {
 
 const sendMessage = async (req, res) => {
   try {
-    const { channelId, content } = req.body;
+    const { channelId, content, attachment } = req.body;
     const { userId, name } = req.user;
 
-    // TODO: Save message to database
     const message = {
       id: Math.random().toString(36).substr(2, 9),
       userId,
       username: name,
       content,
       channelId,
+      attachment,
       timestamp: new Date(),
     };
 
-    // TODO: Emit via Socket.io to other connected users
+    const io = req.app.get('io');
+    if (io && channelId) {
+      io.to(channelId).emit('message', {
+        id: message.id,
+        user: message.username,
+        avatar: '👤',
+        content: message.content,
+        timestamp: message.timestamp,
+        channel: message.channelId,
+        attachment: message.attachment,
+      });
+    }
+
     res.status(201).json(message);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -106,7 +118,7 @@ const joinChannel = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getChannels,
   getMessages,
   sendMessage,

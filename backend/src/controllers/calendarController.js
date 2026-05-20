@@ -1,49 +1,52 @@
 // Calendar Controller
 // Handles calendar events, deadlines, meetings, and sprint planning
 
+const events = [
+  {
+    id: '1',
+    date: '2026-05-25',
+    title: 'Project Deadline',
+    type: 'deadline',
+    color: 'red',
+    projectId: 'proj_1',
+  },
+  {
+    id: '2',
+    date: '2026-05-26',
+    title: 'Team Meeting',
+    type: 'meeting',
+    color: 'blue',
+    startTime: '10:00',
+    endTime: '11:00',
+  },
+  {
+    id: '3',
+    date: '2026-05-27',
+    title: 'Sprint Review',
+    type: 'sprint',
+    color: 'green',
+    startTime: '14:00',
+    endTime: '16:00',
+  },
+];
+
 const getCalendarEvents = async (req, res) => {
   try {
-    const { userId } = req.user;
     const { startDate, endDate } = req.query;
+    let filteredEvents = events;
 
-    // TODO: Fetch calendar events from database
-    // Should include:
-    // - Task deadlines
-    // - Meetings
-    // - Sprint planning
-    // - Leave days
-    // - Custom events
+    if (startDate || endDate) {
+      filteredEvents = events.filter((event) => {
+        const eventDate = new Date(event.date);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        if (start && eventDate < start) return false;
+        if (end && eventDate > end) return false;
+        return true;
+      });
+    }
 
-    const events = [
-      {
-        id: 1,
-        date: '2026-05-25',
-        title: 'Project Deadline',
-        type: 'deadline',
-        color: 'red',
-        projectId: 'proj_1',
-      },
-      {
-        id: 2,
-        date: '2026-05-26',
-        title: 'Team Meeting',
-        type: 'meeting',
-        color: 'blue',
-        startTime: '10:00',
-        endTime: '11:00',
-      },
-      {
-        id: 3,
-        date: '2026-05-27',
-        title: 'Sprint Review',
-        type: 'sprint',
-        color: 'green',
-        startTime: '14:00',
-        endTime: '16:00',
-      },
-    ];
-
-    res.json(events);
+    res.json(filteredEvents);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -90,24 +93,24 @@ const getSprints = async (req, res) => {
 const createEvent = async (req, res) => {
   try {
     const { title, date, type, description } = req.body;
-
-    // TODO: Create calendar event
     const event = {
       id: Math.random().toString(36).substr(2, 9),
       title,
       date,
       type,
       description,
+      color: type === 'deadline' ? 'red' : type === 'meeting' ? 'blue' : type === 'sprint' ? 'green' : type === 'leave' ? 'purple' : 'gray',
       createdAt: new Date(),
     };
 
+    events.push(event);
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = {
+export {
   getCalendarEvents,
   getSprints,
   createEvent,

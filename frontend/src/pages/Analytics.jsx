@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import DashboardLayout from '../layouts/DashboardLayout';
-import api from '../services/api';
+import { analyticsAPI } from '../services/api';
 
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,7 @@ export default function Analytics() {
     teamEfficiency: 0,
     focusHours: 0,
     burnoutRisk: 'Low',
+    taskStatus: [],
   });
 
   useEffect(() => {
@@ -23,32 +24,19 @@ export default function Analytics() {
 
   const fetchAnalytics = async () => {
     try {
-      // TODO: Replace with actual API endpoint
-      const mockData = {
-        completionRate: 78,
-        delayedTasks: 5,
-        weeklyPerformance: [
-          { day: 'Mon', tasks: 8, completed: 6 },
-          { day: 'Tue', tasks: 12, completed: 10 },
-          { day: 'Wed', tasks: 7, completed: 7 },
-          { day: 'Thu', tasks: 10, completed: 8 },
-          { day: 'Fri', tasks: 15, completed: 12 },
-          { day: 'Sat', tasks: 3, completed: 3 },
-          { day: 'Sun', tasks: 2, completed: 2 },
-        ],
-        teamEfficiency: 82,
-        focusHours: 34.5,
-        burnoutRisk: 'Low',
-        taskStatus: [
-          { name: 'Completed', value: 78, color: '#10b981' },
-          { name: 'In Progress', value: 15, color: '#3b82f6' },
-          { name: 'Pending', value: 7, color: '#f59e0b' },
-        ],
-      };
-      setAnalytics(mockData);
-      setLoading(false);
+      const { data } = await analyticsAPI.getAnalytics();
+      setAnalytics({
+        completionRate: data.completionRate ?? 0,
+        delayedTasks: data.delayedTasks ?? 0,
+        weeklyPerformance: data.weeklyPerformance ?? [],
+        teamEfficiency: data.teamEfficiency ?? 0,
+        focusHours: data.focusHours ?? 0,
+        burnoutRisk: data.burnoutRisk ?? 'Low',
+        taskStatus: data.taskStatus ?? [],
+      });
     } catch (error) {
       console.error('Error fetching analytics:', error);
+    } finally {
       setLoading(false);
     }
   };
@@ -168,42 +156,6 @@ export default function Analytics() {
                 <Bar dataKey="tasks" fill="#3b82f6" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          {/* Performance Summary */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Performance Summary</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Completion Rate</span>
-                  <span className="text-sm font-semibold text-green-600">78%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: '78%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Team Efficiency</span>
-                  <span className="text-sm font-semibold text-blue-600">82%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '82%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">On-Time Delivery</span>
-                  <span className="text-sm font-semibold text-purple-600">88%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: '88%' }}></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

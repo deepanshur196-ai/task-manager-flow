@@ -68,6 +68,22 @@ mongoose
 
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
+
+  socket.on('joinChannel', (channelId) => {
+    if (!channelId) return;
+    socket.join(channelId);
+    console.log(`Socket ${socket.id} joined channel ${channelId}`);
+  });
+
+  socket.on('sendMessage', (message) => {
+    if (!message) return;
+    if (message.channel) {
+      io.to(message.channel).emit('message', message);
+    } else {
+      io.emit('message', message);
+    }
+  });
+
   socket.on('disconnect', () => console.log('Socket disconnected:', socket.id));
 });
 

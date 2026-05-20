@@ -1,27 +1,29 @@
-const express = require('express');
-const router = express.Router();
-const { auth } = require('../middleware/auth');
-const {
+import express from 'express';
+import auth from '../middleware/auth.js';
+import { upload } from '../utils/fileUpload.js';
+import {
   getFiles,
   uploadFile,
   deleteFile,
   shareFile,
   getFileActivity,
-} = require('../controllers/filesController');
+} from '../controllers/filesController.js';
+
+const router = express.Router();
 
 // Get files
-router.get('/', auth, getFiles);
+router.get('/', auth(), getFiles);
 
-// Upload file
-router.post('/upload', auth, uploadFile);
+// Upload file (Admin, Project Lead, or Project QL only)
+router.post('/upload', auth(['Admin', 'Project Lead', 'Project QL']), upload.single('file'), uploadFile);
 
 // Delete file
-router.delete('/:fileId', auth, deleteFile);
+router.delete('/:fileId', auth(['Admin', 'Project Lead', 'Project QL']), deleteFile);
 
 // Share file
-router.post('/:fileId/share', auth, shareFile);
+router.post('/:fileId/share', auth(), shareFile);
 
 // Get file activity
-router.get('/activity/:projectId', auth, getFileActivity);
+router.get('/activity/:projectId', auth(), getFileActivity);
 
-module.exports = router;
+export default router;

@@ -116,7 +116,7 @@ const askQuestion = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   generateSubtasks,
   predictDeadlines,
   generateStandup,

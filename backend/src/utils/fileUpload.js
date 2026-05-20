@@ -11,11 +11,18 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept only certain file types
-  if (['.png', '.jpg', '.jpeg', '.pdf', '.docx'].includes(path.extname(file.originalname).toLowerCase())) {
+  // Accept common document and media file types
+  const acceptedExtensions = [
+    '.png', '.jpg', '.jpeg', '.gif', '.svg',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.csv', '.json',
+    '.zip', '.rar', '.7z'
+  ];
+
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (acceptedExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type'), false);
+    cb(new Error(`Invalid file type: ${ext}`), false);
   }
 };
 
